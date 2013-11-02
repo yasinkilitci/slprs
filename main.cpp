@@ -62,7 +62,7 @@ int readWithTesseract(Mat&,int&);
 int main( int argc, char** argv )
 {
   // Load the picture
-  srcOriginal = imread( "D:/opencv/resim/plaka/plaka11.jpg" );
+  srcOriginal = imread( "D:/opencv/resim/plaka/plaka02.jpg" );
 
   // if load operation fails, show the error message and exit.
   if( !srcOriginal.data )
@@ -109,7 +109,7 @@ int main( int argc, char** argv )
  */
 void CannyThreshold(int, void*)
 {
-  lowThreshold = 100;
+  lowThreshold = 99;
 	/// Canny detector
   Canny( srcGray, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size );
   /// Using Canny's output as a mask, we display our result
