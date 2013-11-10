@@ -11,9 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{0D50E2A7-2597-4586-ACB8-DD960DC6F012}</ProjectGuid>
-    <RootNamespace>OpenCV</RootNamespace>
-    <ProjectName>OpenCV_P01</ProjectName>
+    <ProjectGuid>{72A20B1E-24C6-4437-914B-0EF8C59A898F}</ProjectGuid>
+    <RootNamespace>WxWidgetsOpenCV</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -39,13 +38,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>D:\cvblob\cvBlob;D:\Tesseract-OCR\Leptonica\include;D:\Tesseract-OCR\include;D:\opencv\build\include;D:\opencv\build\include\opencv;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\Tesseract-OCR\Leptonica\lib;D:\opencv\build\x86\vc10\lib;D:\Tesseract-OCR\lib;D:\cvblob\genlib\Release;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>D:\cvblob\cvBlob;D:\Tesseract-OCR\Leptonica\include;D:\Tesseract-OCR\include;D:\opencv\build\include;D:\opencv\build\include\opencv;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\Tesseract-OCR\Leptonica\lib;D:\opencv\build\x86\vc11\lib;D:\Tesseract-OCR\lib;D:\cvblob\genlib\Release;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(WXPATH)\include;$(WXPATH)\include\msvc;D:\cvblob\cvBlob;D:\Tesseract-OCR\Leptonica\include;D:\Tesseract-OCR\include;D:\opencv\build\include;D:\opencv\build\include\opencv;$(IncludePath)</IncludePath>
+    <LibraryPath>$(WXPATH)\lib;$(WXPATH)\lib\vc120_lib\;D:\Tesseract-OCR\Leptonica\lib;D:\opencv\build\x86\vc11\lib;D:\Tesseract-OCR\lib;D:\cvblob\genlib\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -55,7 +50,6 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_calib3d246.lib;opencv_contrib246.lib;opencv_core246.lib;opencv_features2d246.lib;opencv_flann246.lib;opencv_gpu246.lib;opencv_haartraining_engine.lib;opencv_highgui246.lib;opencv_imgproc246.lib;opencv_legacy246.lib;opencv_ml246.lib;opencv_nonfree246.lib;opencv_objdetect246.lib;opencv_photo246.lib;opencv_stitching246.lib;opencv_ts246.lib;opencv_video246.lib;opencv_videostab246.lib;libtesseract302.lib;liblept168.lib;cvblob.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -65,19 +59,23 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WXUSINGDLL;wxMSVC_VERSION_AUTO;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opencv_calib3d246.lib;opencv_contrib246.lib;opencv_core246.lib;opencv_features2d246.lib;opencv_flann246.lib;opencv_gpu246.lib;opencv_haartraining_engine.lib;opencv_highgui246.lib;opencv_imgproc246.lib;opencv_legacy246.lib;opencv_ml246.lib;opencv_nonfree246.lib;opencv_objdetect246.lib;opencv_photo246.lib;opencv_stitching246.lib;opencv_ts246.lib;opencv_video246.lib;opencv_videostab246.lib;libtesseract302.lib;liblept168.lib;cvblob.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(WXPATH)\lib\vc120_dll\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="LicensePlateReader.cpp" />
     <ClCompile Include="RatioCalculator.cpp" />
+    <ClCompile Include="WxWidgetsDeneme.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LicensePlateReader.h" />
     <ClInclude Include="RatioCalculator.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
