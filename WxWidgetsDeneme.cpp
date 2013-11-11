@@ -104,11 +104,11 @@ enum
 	// menu items
 	Minimal_Quit = wxID_EXIT,
 	Dialog_SelectDir = wxID_APPLY,
+	Minimal_About = wxID_ABOUT,
+	PlateBox_Select = wxID_SELECTALL
 	// it is important for the id corresponding to the "About" command to have
 	// this standard value as otherwise it won't be handled properly under Mac
 	// (where it is special and put into the "Apple" menu)
-	Minimal_About = wxID_ABOUT,
-	PlateBox_Select = wxID_SELECTALL
 
 };
 
@@ -197,7 +197,6 @@ MyFrame::MyFrame(const wxString& title)
 	menuBar->Append(fileMenu, "&Dosya");
 	menuBar->Append(plateMenu, "&Plaka Ýþlemleri");
 	menuBar->Append(helpMenu, "&Yardým");
-	
 
 	// ... and attach this menu bar to the frame
 	SetMenuBar(menuBar);
@@ -210,7 +209,7 @@ MyFrame::MyFrame(const wxString& title)
 	btnOpenDir = new wxButton(this, wxID_APPLY, wxT("Klasör Seç"), wxPoint(10, 265),SIZE_BUTTON_SMALL,0);
 	
 	/* READ PIC */
-	Mat srcBGR = imread("D:/opencv/resim/plaka/plaka01.jpg");
+	Mat srcBGR = imread("D:/opencv/resim/plaka/plaka02.jpg");
 	Mat srcRGB = srcBGR.clone();
 	RatioCalculator* rc = new RatioCalculator();
 	rc->convertBGR2RGB(srcBGR, srcRGB);

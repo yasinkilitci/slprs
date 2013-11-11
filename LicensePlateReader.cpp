@@ -17,29 +17,31 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	rc = new RatioCalculator();
 
 	/* Calculate Thresholding Value */
-	//GaussianBlur(srcOriginal,srcOriginal,Size(3,3),0,0);
-	thresholding_value = rc->calculateThresholdValue(srcOriginal);
-	//cout << "Threshold Value: " << thresholding_value << endl;
+	srcModified = srcOriginal.clone();
+	medianBlur(srcOriginal, srcModified, 3);
+	//GaussianBlur(srcModified, srcModified, Size(3, 3), 0, 1);
+	thresholding_value = rc->calculateThresholdValue(srcModified);
 
 	/* Pre-Processing Stage */
 
-	srcModified = srcOriginal.clone();
 	cvtColor(srcModified, srcModified, CV_BGR2GRAY);
 	//GaussianBlur(srcModified,srcModified,Size(3,3),0,0);
 	//equalizeHist(srcModified,srcModified);
-	threshold(srcModified, srcModified, thresholding_value + 25, 255, 0);
-	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY,3,5);
+	threshold(srcModified, srcModified, thresholding_value+25, 255, 0);
+	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_GAUSSIAN_C,CV_THRESH_BINARY,3,5);
 
 	srcGray = srcModified.clone();
 
 	/// Create a matrix of the same type and size as src (for dst)
 	dst.create(srcOriginal.size(), srcOriginal.type());
 
-	//////////////////////////////////////////////////////////////////////
-	///////////////// CANNY THRESHOLD ///////////////////////////////////
-	//////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////
+	///////////// CANNY EDGE DETECTION /////////////////
+	////////////////////////////////////////////////////
 
-	lowThreshold = 99;
+	lowThreshold = 0;
+	
+	
 	/// Canny detector
 	Canny(srcGray, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size);
 	/// Using Canny's output as a mask, we display our result
@@ -59,36 +61,40 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	threshold(grayagain, threshold_output, 1, 255, THRESH_BINARY);
 	// dilate edges for filling gaps
 	//imshow("Before Dilation", threshold_output);
-	int krsize = 2;
+	int krsize = 1;
 	Mat mtemp;
-
-	morphologyEx(threshold_output, mtemp, MORPH_ERODE, getStructuringElement(MORPH_RECT, Size(2 * krsize + 1, 2 * krsize + 1), Point(1, 1)));
+	
+	//imshow("Before Morph", threshold_output);
+	morphologyEx(threshold_output, mtemp, MORPH_DILATE, getStructuringElement(MORPH_RECT, Size(2 * krsize + 1, 2 * krsize + 1), Point(1, 1)));
+	morphologyEx(mtemp, mtemp, MORPH_ERODE, getStructuringElement(MORPH_RECT, Size(2 * 5 + 1, 2 * 5 + 1), Point(1, 1)));
 	morphologyEx(mtemp, mtemp, MORPH_CLOSE, getStructuringElement(MORPH_RECT, Size(2 * 5 + 1, 2 * 5 + 1), Point(1, 1)));
 	//morphologyEx(threshold_output, threshold_output, MORPH_BLACKHAT, getStructuringElement(MORPH_CROSS, Size(2 * 1 + 1, 2 * 1 + 1), Point(1, 1)));
-	//morphologyEx(threshold_output, threshold_output, MORPH_DILATE, getStructuringElement(MORPH_CROSS, Size(2 * 1 + 1, 2 * 1 + 1), Point(1, 1)));
 	bitwise_not(mtemp, mtemp);
+	//imshow("Mask: Temp", mtemp);
 	bitwise_and(threshold_output, mtemp, mtemp);
-	//morphologyEx(threshold_output, threshold_output, MORPH_DILATE, getStructuringElement(MORPH_CROSS, Size(2 * 1 + 1, 2 * 1 + 1), Point(1, 1)));
-	//morphologyEx( threshold_output, threshold_output, MORPH_DILATE, getStructuringElement(MORPH_ELLIPSE,Size(2*1+1,2*1+1),Point(1,1)) );
-	//morphologyEx( threshold_output, threshold_output, MORPH_ERODE, getStructuringElement(MORPH_ELLIPSE,Size(2*1+1,2*1+1),Point(1,1)) );
-
-	//imshow("After Dilation: Temp", mtemp);
-	//imshow("After Dilation:Threshold Output", threshold_output);
+	GaussianBlur(mtemp, mtemp, Size(3, 3), 0, 0);
+	//imshow("After Morph", mtemp);
+	
+	
 	/// Find contours
 	findContours(threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
 	/// Approximate contours to polygons + get bounding rects and circles
 	vector<vector<Point> > contours_poly(contours.size());
 	vector<Rect> boundRect(contours.size());
-	vector<Point2f>center(contours.size());
-	vector<float>radius(contours.size());
+	//vector<Point2f>center(contours.size());
+	//vector<float>radius(contours.size());
 
 	for (int i = 0; i < contours.size(); i++)
 	{
 		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
 		boundRect[i] = boundingRect(Mat(contours_poly[i]));
-		minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
+		//minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
 	}
+
+	///////////////////////////////////////
+	///////// CONTOURS - END //////////////
+	///////////////////////////////////////
 
 
 	/// Draw polygonal contour + bonding rects + circles
@@ -102,34 +108,27 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
 	}*/
 
-	// Get possible plates, draw on the image, find the biggest one
-	//cout << "Image Height: " << srcOriginal.rows << endl;
+	
+	//////////////////////////////////////////////////
+	////////////// FIND POSSIBLE PLATES //////////////
+	//////////////////////////////////////////////////
+
+
+	// Get possible plate list
 	possiblePlates = rc->getPossiblePlates(boundRect, srcOriginal.rows);
+	// Draw them on the main picture
+	for (int i = 0; i<possiblePlates.size(); i++)
+		rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
+
 	int numberoftries = possiblePlates.size();
+
 	while (numberoftries>0)
 	{
 		drawing = srcOriginal.clone();
-		for (int i = 0; i<possiblePlates.size(); i++)
-			rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
 
 		Rect biggestRect;
 		int biggestRectIndex;
 		biggestRect = rc->getBiggestRect(possiblePlates, biggestRectIndex);
-
-
-		Scalar color = Scalar(0, 255, 120);
-		rectangle(drawing, biggestRect.tl(), biggestRect.br(), color, 2, 8, 0);
-
-		
-		/////////////////////////////
-		/* SHOW THE MARKED PICTURE */
-		/////////////////////////////
-		//namedWindow("Contours", CV_WINDOW_AUTOSIZE);
-		//imshow("Contours", drawing);
-		Mat markedBGR = drawing.clone();
-		markedRGB = drawing.clone();
-		convertBGR2RGB(markedBGR, markedRGB);
-
 
 		/* Crop the image from original */
 		srcCropped = srcOriginal(biggestRect);
@@ -153,31 +152,6 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		// Clean Image
 		cleanImage(srcCropped, clean_brush_size);
 
-		
-		//////////////////////////////
-		/* SET THE CROPPED PICTURE */
-		/////////////////////////////
-		//imshow("Kesilmis Resim", srcCropped);
-		Mat lpBGR = srcCropped.clone();
-		cvtColor(srcCropped, lpBGR, CV_GRAY2BGR);
-		lpRGB = lpBGR.clone();
-		convertBGR2RGB(lpBGR, lpRGB);
-		//showDFTImage(srcGray);
-		//showDFTImage(srcCropped);
-
-		//// paste license plate into a white area
-		//Mat white = Mat::zeros( srcGray.size(), CV_8UC3 );
-		//cvtColor(white,white,CV_BGR2GRAY);
-		//bitwise_not(white,white);
-		//srcCropped.copyTo(white(biggestRect));
-		//imshow("Pasted image",white);
-
-		////////////////////////////////////////
-		////// DISCRETE FOURIER TRANSFORM //////
-		////////////////////////////////////////
-		//showDFTImage(white);
-
-
 		///////////////////////////////////////////
 		////// READ ITERATION WITH TESSERACT //////
 		///////////////////////////////////////////
@@ -187,6 +161,40 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		//cout << "Length of plate is: " << plate_str_len << endl;
 		if (plate_str_len > 6 && confidence > 60)
 		{
+			///////////////////////////////////////////
+			// SUCCESSFUL READ - SET CROPPED PICTURE //
+			///////////////////////////////////////////
+			//imshow("Kesilmis Resim", srcCropped);
+			Mat lpBGR = srcCropped.clone();
+			cvtColor(srcCropped, lpBGR, CV_GRAY2BGR);
+			lpRGB = lpBGR.clone();
+			convertBGR2RGB(lpBGR, lpRGB);
+			//showDFTImage(srcGray);
+			//showDFTImage(srcCropped);
+
+			//// paste license plate into a white area
+			//Mat white = Mat::zeros( srcGray.size(), CV_8UC3 );
+			//cvtColor(white,white,CV_BGR2GRAY);
+			//bitwise_not(white,white);
+			//srcCropped.copyTo(white(biggestRect));
+			//imshow("Pasted image",white);
+
+			////////////////////////////////////////
+			////// DISCRETE FOURIER TRANSFORM //////
+			////////////////////////////////////////
+			//showDFTImage(white);
+
+			////////////////////////////////////////////
+			/* SHOW THE MARKED PICTURE (WHOLE PICTURE */
+			////////////////////////////////////////////
+			// Draw the chosen plate green
+		rectangle(drawing, biggestRect.tl(), biggestRect.br(), Scalar(0, 255, 120), 2, 8, 0);
+			//imshow("Contours", drawing);
+			Mat markedBGR = drawing.clone();
+			markedRGB = drawing.clone();
+			convertBGR2RGB(markedBGR, markedRGB);
+
+			// return the plate as string
 			return plate_str;
 		}
 		else
@@ -195,6 +203,10 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 			possiblePlates.erase(possiblePlates.begin() + biggestRectIndex);
 		}
 	}
+
+	////////////////////////////////////////////////////////
+	////////////// FIND POSSIBLE PLATES - END //////////////
+	////////////////////////////////////////////////////////
 
 }
 

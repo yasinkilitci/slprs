@@ -17,7 +17,7 @@
 /* LICENCE PLATE RATIOS */
 
 // min originalwidth/platewidth value
-#define MIN_PLATE_HEIGHT_RATIO 25.0f
+#define MIN_PLATE_HEIGHT_RATIO 28.0f
 
 
 ///////////////////////////////////////////
@@ -32,9 +32,9 @@ class RatioCalculator
 public:
 	// FUNCTIONS
 	RatioCalculator();
-	std::vector<float> getRatioList(std::vector<cv::Rect> sourceRectList);
-	float getRatio(cv::Rect sourceRect);
-	cv::Rect getBiggestRect(std::vector<cv::Rect> sourceRectList, int &indexOfBiggest);
+	std::vector<float> getRatioList(std::vector<cv::Rect>& sourceRectList);
+	float getRatio(cv::Rect& sourceRect);
+	cv::Rect getBiggestRect(std::vector<cv::Rect>& sourceRectList, int &indexOfBiggest);
 	std::vector<cv::Rect> getPossiblePlates(std::vector<cv::Rect> &RectList, int imageHeight);
 	double calculateThresholdValue(cv::Mat&);
 	void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
