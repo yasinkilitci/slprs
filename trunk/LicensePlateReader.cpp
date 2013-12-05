@@ -6,6 +6,7 @@ using namespace cv;
 LicensePlateReader::LicensePlateReader()
 {
 	rng(12345);
+	prepareTesseract();
 }
 
 char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& markedRGB, Mat& lpRGB)
@@ -17,31 +18,29 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	rc = new RatioCalculator();
 
 	/* Calculate Thresholding Value */
-	srcModified = srcOriginal.clone();
-	medianBlur(srcOriginal, srcModified, 3);
-	//GaussianBlur(srcModified, srcModified, Size(3, 3), 0, 1);
-	thresholding_value = rc->calculateThresholdValue(srcModified);
+	//GaussianBlur(srcOriginal,srcOriginal,Size(3,3),0,0);
+	thresholding_value = rc->calculateThresholdValue(srcOriginal);
+	//cout << "Threshold Value: " << thresholding_value << endl;
 
 	/* Pre-Processing Stage */
 
+	srcModified = srcOriginal.clone();
 	cvtColor(srcModified, srcModified, CV_BGR2GRAY);
 	//GaussianBlur(srcModified,srcModified,Size(3,3),0,0);
 	//equalizeHist(srcModified,srcModified);
-	threshold(srcModified, srcModified, thresholding_value+25, 255, 0);
-	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_GAUSSIAN_C,CV_THRESH_BINARY,3,5);
+	threshold(srcModified, srcModified, thresholding_value + 25, 255, 0);
+	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY,3,5);
 
 	srcGray = srcModified.clone();
 
 	/// Create a matrix of the same type and size as src (for dst)
 	dst.create(srcOriginal.size(), srcOriginal.type());
 
-	////////////////////////////////////////////////////
-	///////////// CANNY EDGE DETECTION /////////////////
-	////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////
+	///////////////// CANNY THRESHOLD ///////////////////////////////////
+	//////////////////////////////////////////////////////////////////////
 
-	lowThreshold = 0;
-	
-	
+	lowThreshold = 99;
 	/// Canny detector
 	Canny(srcGray, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size);
 	/// Using Canny's output as a mask, we display our result
@@ -61,153 +60,237 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	threshold(grayagain, threshold_output, 1, 255, THRESH_BINARY);
 	// dilate edges for filling gaps
 	//imshow("Before Dilation", threshold_output);
-	int krsize = 1;
+	int krsize = 2;
 	Mat mtemp;
-	
-	//imshow("Before Morph", threshold_output);
-	morphologyEx(threshold_output, mtemp, MORPH_DILATE, getStructuringElement(MORPH_RECT, Size(2 * krsize + 1, 2 * krsize + 1), Point(1, 1)));
-	morphologyEx(mtemp, mtemp, MORPH_ERODE, getStructuringElement(MORPH_RECT, Size(2 * 5 + 1, 2 * 5 + 1), Point(1, 1)));
+
+	morphologyEx(threshold_output, mtemp, MORPH_ERODE, getStructuringElement(MORPH_RECT, Size(2 * krsize + 1, 2 * krsize + 1), Point(1, 1)));
 	morphologyEx(mtemp, mtemp, MORPH_CLOSE, getStructuringElement(MORPH_RECT, Size(2 * 5 + 1, 2 * 5 + 1), Point(1, 1)));
 	//morphologyEx(threshold_output, threshold_output, MORPH_BLACKHAT, getStructuringElement(MORPH_CROSS, Size(2 * 1 + 1, 2 * 1 + 1), Point(1, 1)));
+	//morphologyEx(threshold_output, threshold_output, MORPH_DILATE, getStructuringElement(MORPH_CROSS, Size(2 * 1 + 1, 2 * 1 + 1), Point(1, 1)));
 	bitwise_not(mtemp, mtemp);
-	//imshow("Mask: Temp", mtemp);
 	bitwise_and(threshold_output, mtemp, mtemp);
-	GaussianBlur(mtemp, mtemp, Size(3, 3), 0, 0);
-	//imshow("After Morph", mtemp);
-	
-	
+	//morphologyEx(threshold_output, threshold_output, MORPH_DILATE, getStructuringElement(MORPH_CROSS, Size(2 * 1 + 1, 2 * 1 + 1), Point(1, 1)));
+	//morphologyEx( threshold_output, threshold_output, MORPH_DILATE, getStructuringElement(MORPH_ELLIPSE,Size(2*1+1,2*1+1),Point(1,1)) );
+	//morphologyEx( threshold_output, threshold_output, MORPH_ERODE, getStructuringElement(MORPH_ELLIPSE,Size(2*1+1,2*1+1),Point(1,1)) );
+
+	//imshow("After Dilation: Temp", mtemp);
+	//imshow("After Dilation:Threshold Output", threshold_output);
 	/// Find contours
+	//imshow("thresholdoutput before", threshold_output);
 	findContours(threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	//imshow("thresholdoutput after", threshold_output);
 
 	/// Approximate contours to polygons + get bounding rects and circles
 	vector<vector<Point> > contours_poly(contours.size());
 	vector<Rect> boundRect(contours.size());
-	//vector<Point2f>center(contours.size());
-	//vector<float>radius(contours.size());
+	vector<Point2f>center(contours.size());
+	vector<float>radius(contours.size());
 
 	for (int i = 0; i < contours.size(); i++)
 	{
 		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
 		boundRect[i] = boundingRect(Mat(contours_poly[i]));
-		//minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
+		minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
 	}
-
-	///////////////////////////////////////
-	///////// CONTOURS - END //////////////
-	///////////////////////////////////////
 
 
 	/// Draw polygonal contour + bonding rects + circles
 	//Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
 	Mat drawing = srcOriginal.clone();
-	/*for( int i = 0; i< contours.size(); i++ )
+	
+	for( int i = 0; i< contours.size(); i++ )
 	{
 	Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-	drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+	//drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
 	rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0 );
-	circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
-	}*/
+	//circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
+	}
 
-	
-	//////////////////////////////////////////////////
-	////////////// FIND POSSIBLE PLATES //////////////
-	//////////////////////////////////////////////////
+	imshow("Bounding Rects", drawing);
 
-
-	// Get possible plate list
+	// Get possible plates, draw on the image, find the biggest one
+	//cout << "Image Height: " << srcOriginal.rows << endl;
 	possiblePlates = rc->getPossiblePlates(boundRect, srcOriginal.rows);
-	// Draw them on the main picture
-	for (int i = 0; i<possiblePlates.size(); i++)
-		rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
-
+	vector<PlatePack> successfulPlates;
+	PlatePack t_successfulPlate;
 	int numberoftries = possiblePlates.size();
-
+	
 	while (numberoftries>0)
 	{
 		drawing = srcOriginal.clone();
+		for (int i = 0; i<possiblePlates.size(); i++)
+			rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
 
 		Rect biggestRect;
 		int biggestRectIndex;
 		biggestRect = rc->getBiggestRect(possiblePlates, biggestRectIndex);
 
+
+		//Scalar color = Scalar(0, 255, 120);
+		//rectangle(drawing, biggestRect.tl(), biggestRect.br(), color, 2, 8, 0);
+		//
+		///////////////////////////////
+		///* SHOW THE MARKED PICTURE */
+		///////////////////////////////
+
+		////namedWindow("Contours", CV_WINDOW_AUTOSIZE);
+		////imshow("Contours", drawing);
+		//Mat markedBGR = drawing.clone();
+		//markedRGB = drawing.clone();
+		//convertBGR2RGB(markedBGR, markedRGB);
+
 		/* Crop the image from original */
 		srcCropped = srcOriginal(biggestRect);
 
-		/* Initialize filter values */
-		calculateFilterValues(srcCropped);
+		processImage(srcCropped);
 
-		/* Process Cropped Image */
-		thresholding_value = rc->calculateThresholdValue(srcCropped);
-		//cout << "Threshold Value(Cropped): " << thresholding_value << endl;
-		cvtColor(srcCropped, srcCropped, CV_BGR2GRAY);
-		//equalizeHist(srcCropped,srcCropped);
-		//medianBlur(srcCropped,srcCropped,2*blur_amount+1);
-		threshold(srcCropped, srcCropped, thresholding_value, 255, 0);
-		bitwise_not(srcCropped, srcCropped);
-		erode(srcCropped, srcCropped, getStructuringElement(MORPH_RECT, Size(2 * erosion_value + 1, 2 * erosion_value + 1), Point(erosion_value, erosion_value)));
-		dilate(srcCropped, srcCropped, getStructuringElement(MORPH_RECT, Size(2 * dilation_value + 1, 2 * dilation_value + 1), Point(dilation_value, dilation_value)));
-		bitwise_not(srcCropped, srcCropped);
-		//GaussianBlur(srcCropped,srcCropped,Size(2*blur_amount+1,2*blur_amount+1),0,0);
-		medianBlur(srcCropped, srcCropped, 2 * blur_amount + 1);
-		// Clean Image
-		cleanImage(srcCropped, clean_brush_size);
+		////////////////////////////////////////
+		////// DISCRETE FOURIER TRANSFORM //////
+		////////////////////////////////////////
+		//showDFTImage(white);
 
 		///////////////////////////////////////////
 		////// READ ITERATION WITH TESSERACT //////
 		///////////////////////////////////////////
 		int confidence = 0;
 		char* plate_str;
-		int plate_str_len = readWithTesseract(srcCropped, confidence,plate_str);
+		int plate_str_len = readWithTesseract(srcCropped, confidence, plate_str);
 		//cout << "Length of plate is: " << plate_str_len << endl;
-		if (plate_str_len > 6 && confidence > 60)
+		if (plate_str_len < 11 && plate_str_len > 7 && confidence > 40)
 		{
-			///////////////////////////////////////////
-			// SUCCESSFUL READ - SET CROPPED PICTURE //
-			///////////////////////////////////////////
-			//imshow("Kesilmis Resim", srcCropped);
-			Mat lpBGR = srcCropped.clone();
-			cvtColor(srcCropped, lpBGR, CV_GRAY2BGR);
-			lpRGB = lpBGR.clone();
-			convertBGR2RGB(lpBGR, lpRGB);
-			//showDFTImage(srcGray);
-			//showDFTImage(srcCropped);
-
-			//// paste license plate into a white area
-			//Mat white = Mat::zeros( srcGray.size(), CV_8UC3 );
-			//cvtColor(white,white,CV_BGR2GRAY);
-			//bitwise_not(white,white);
-			//srcCropped.copyTo(white(biggestRect));
-			//imshow("Pasted image",white);
-
-			////////////////////////////////////////
-			////// DISCRETE FOURIER TRANSFORM //////
-			////////////////////////////////////////
-			//showDFTImage(white);
-
-			////////////////////////////////////////////
-			/* SHOW THE MARKED PICTURE (WHOLE PICTURE */
-			////////////////////////////////////////////
-			// Draw the chosen plate green
-		rectangle(drawing, biggestRect.tl(), biggestRect.br(), Scalar(0, 255, 120), 2, 8, 0);
-			//imshow("Contours", drawing);
-			Mat markedBGR = drawing.clone();
-			markedRGB = drawing.clone();
-			convertBGR2RGB(markedBGR, markedRGB);
-
-			// return the plate as string
-			return plate_str;
+			// collect successful plates in vector
+			t_successfulPlate.confidence = confidence;
+			t_successfulPlate.plate = biggestRect;
+			successfulPlates.push_back(t_successfulPlate);
+			numberoftries--;
+			possiblePlates.erase(possiblePlates.begin() + biggestRectIndex);
 		}
 		else
 		{
 			numberoftries--;
 			possiblePlates.erase(possiblePlates.begin() + biggestRectIndex);
 		}
+
 	}
 
-	////////////////////////////////////////////////////////
-	////////////// FIND POSSIBLE PLATES - END //////////////
-	////////////////////////////////////////////////////////
+	/* Now we have only the best results in the possiblePlates list */
 
+	////////////////////////////////////////////////////
+	////////////   CHARACTER SEGMENTATION   ////////////
+	////////////////////////////////////////////////////
+
+	// first, we have to find the plate with the biggest confidence value
+
+	Rect bestRect;
+	int bestConfidence = 0;
+
+	for (int i = 0; i < successfulPlates.size(); i++)
+	{
+		if (successfulPlates[i].confidence > bestConfidence)
+		{
+			bestConfidence = successfulPlates[i].confidence;
+			bestRect = successfulPlates[i].plate;
+		}
+	}
+
+	// Mark the Picture
+	Scalar color = Scalar(0, 255, 120);
+	rectangle(drawing, bestRect.tl(), bestRect.br(), color, 2, 8, 0);
+
+	/////////////////////////////
+	/* SHOW THE MARKED PICTURE */
+	/////////////////////////////
+
+	//namedWindow("Contours", CV_WINDOW_AUTOSIZE);
+	//imshow("Contours", drawing);
+	Mat markedBGR = drawing.clone();
+	markedRGB = drawing.clone();
+	convertBGR2RGB(markedBGR, markedRGB);
+
+	// Crop with the best Rect
+	srcCropped = srcOriginal(bestRect);
+
+	processImage(srcCropped);
+
+	//////////////////////////////
+	/* SET THE CROPPED PICTURE */
+	/////////////////////////////
+	//imshow("Kesilmis Resim", srcCropped);
+	Mat lpBGR = srcCropped.clone();
+	cvtColor(srcCropped, lpBGR, CV_GRAY2BGR);
+	lpRGB = lpBGR.clone();
+	convertBGR2RGB(lpBGR, lpRGB);
+
+	// find contours for the best rect, yes! These are the characters themselves!
+
+	vector<vector<Point> > plate_contours;
+	vector<Vec4i> plate_hierarchy;
+
+	Mat plate_detected_edges;
+	lowThreshold = 99;
+	/// Canny detector
+	Canny(srcCropped, plate_detected_edges, lowThreshold, lowThreshold*ratio, kernel_size);
+	/// Using Canny's output as a mask, we display our result
+
+	findContours(plate_detected_edges, plate_contours, plate_hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+	vector<vector<Point> > plate_contours_poly(plate_contours.size());
+	vector<Rect> plate_boundRect(plate_contours.size());
+
+	for (int i = 0; i < plate_contours.size(); i++)
+	{
+		approxPolyDP(Mat(plate_contours[i]), plate_contours_poly[i], 3, true);
+		plate_boundRect[i] = boundingRect(Mat(plate_contours_poly[i]));
+	}
+
+	/*draw contours*/
+
+	Mat plate_drawing = srcCropped.clone();
+	cvtColor(plate_drawing, plate_drawing, CV_GRAY2BGR);
+	
+	for( int i = 0; i< plate_contours.size(); i++ )
+	{
+		Scalar color = Scalar( 0, 255, 0 );
+		drawContours( plate_drawing, plate_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+		rectangle( plate_drawing, plate_boundRect[i].tl(), plate_boundRect[i].br(), color, 2, 8, 0 );
+	}
+
+	imshow("Plate Contours", plate_drawing);
+	
+	
+	//////////////////////////////////////
+	// Copy characters onto white area
+	//////////////////////////////////////
+	Mat white = Mat::zeros( srcCropped.size(), CV_8UC3 );
+	cvtColor(white,white,CV_BGR2GRAY);
+	bitwise_not(white, white);
+	//imshow("white", white);
+	//srcCropped.copyTo(white(biggestRect));
+
+	/* Tesseract - Read Single Char */
+
+	STRING text("");
+	for (int i = 0; i < plate_boundRect.size(); i++)
+	{
+		Mat m_singlechar = srcCropped(plate_boundRect[i]);
+		if (m_singlechar.rows > srcCropped.rows / 2 && m_singlechar.rows < 9 * srcCropped.rows / 10)
+		{
+			// copy the character onto white area
+			m_singlechar.copyTo(white(plate_boundRect[i]));
+		}
+	}
+
+	imshow("white_concat", white);
+
+	char* buffer;
+	int confidence;
+	readWithTesseract(white, confidence, buffer);
+	text += buffer;
+
+	char* result = new char[text.length() + 1];
+	strncpy(result, text.string(), text.length() + 1);
+
+	return result;
 }
 
 void LicensePlateReader::showDFTImage(Mat& I)
@@ -290,7 +373,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 0;
 		blur_amount = 0;
 		clean_brush_size = 1;
-		cout << "Category 1" << endl;
+		//cout << "Category 1" << endl;
 	}
 	else if (pc >= 10000 && pc<20000)
 	{
@@ -298,7 +381,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 1;
 		blur_amount = 1;
 		clean_brush_size = 5;
-		cout << "Category 2" << endl;
+		//cout << "Category 2" << endl;
 	}
 	else if (pc >= 20000 && pc<30000)
 	{
@@ -306,7 +389,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 1;
 		blur_amount = 1;
 		clean_brush_size = 20;
-		cout << "Category 3" << endl;
+		//cout << "Category 3" << endl;
 	}
 	else if (pc >= 30000 && pc<40000)
 	{
@@ -314,7 +397,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 1;
 		blur_amount = 1;
 		clean_brush_size = 20;
-		cout << "Category 4" << endl;
+		//cout << "Category 4" << endl;
 	}
 	else if (pc >= 40000 && pc<50000)
 	{
@@ -322,7 +405,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 2;
 		blur_amount = 1;
 		clean_brush_size = 15;
-		cout << "Category 5" << endl;
+		//cout << "Category 5" << endl;
 	}
 	else if (pc >= 50000 && pc<100000)
 	{
@@ -330,7 +413,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 2;
 		blur_amount = 1;
 		clean_brush_size = 30;
-		cout << "Category 6" << endl;
+		//cout << "Category 6" << endl;
 	}
 	else if (pc >= 100000 && pc<150000)
 	{
@@ -338,7 +421,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 3;
 		blur_amount = 2;
 		clean_brush_size = 60;
-		cout << "Category 7" << endl;
+		//cout << "Category 7" << endl;
 	}
 	else if (pc >= 150000 && pc<200000)
 	{
@@ -346,7 +429,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 4;
 		blur_amount = 2;
 		clean_brush_size = 80;
-		cout << "Category 8" << endl;
+		//cout << "Category 8" << endl;
 	}
 	else if (pc >= 200000 && pc<250000)
 	{
@@ -354,7 +437,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 4;
 		blur_amount = 2;
 		clean_brush_size = 100;
-		cout << "Category 9" << endl;
+		//cout << "Category 9" << endl;
 	}
 	else
 	{
@@ -362,7 +445,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 5;
 		blur_amount = 2;
 		clean_brush_size = 120;
-		cout << "Category 10" << endl;
+		//cout << "Category 10" << endl;
 	}
 }
 
@@ -444,17 +527,21 @@ void LicensePlateReader::drawSkewAngle(Mat& dft)
 
 }
 
-int LicensePlateReader::readWithTesseract(Mat& srcPlate, int&confidence, char*& output)
+void LicensePlateReader::prepareTesseract()
 {
-	tesseract::TessBaseAPI tess;
 	tess.Init(NULL, "lpa", tesseract::OEM_DEFAULT);
 	tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
 	tess.SetVariable("tessedit_char_whitelist", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	tess.SetImage((uchar*)srcCropped.data, srcCropped.cols, srcCropped.rows, 1, srcCropped.cols);
+}
+
+int LicensePlateReader::readWithTesseract(Mat& srcPlate, int&confidence, char*& output)
+{
+	tess.SetImage((uchar*)srcPlate.data, srcPlate.cols, srcPlate.rows, 1, srcPlate.cols);
 
 	// Get the text
 	output = tess.GetUTF8Text();
 	confidence = tess.MeanTextConf();
+	/*
 	std::cout << output << std::endl;
 	cout << "Confidence Value is %" << confidence << endl;
 	int* a = tess.AllWordConfidences();;
@@ -463,6 +550,7 @@ int LicensePlateReader::readWithTesseract(Mat& srcPlate, int&confidence, char*& 
 		cout << "Confidence: " << *a << endl;
 		a++;
 	}
+	*/
 	// return count of characters
 	return strlen(output) - 2;
 }
@@ -475,4 +563,28 @@ void LicensePlateReader::convertBGR2RGB(Mat& src, Mat& dst)
 		dst.at<Vec3b>(row, col)[2] = src.at<Vec3b>(row, col)[0];
 		dst.at<Vec3b>(row, col)[0] = src.at<Vec3b>(row, col)[2];
 	}
+}
+
+void LicensePlateReader::processImage(Mat& image)
+{
+	/* Initialize filter values */
+	calculateFilterValues(image);
+
+	/* Process Cropped Image */
+
+	thresholding_value = rc->calculateThresholdValue(image);
+	//cout << "Threshold Value(Cropped): " << thresholding_value << endl;
+	cvtColor(image, image, CV_BGR2GRAY);
+	//equalizeHist(srcCropped,srcCropped);
+	//medianBlur(srcCropped,srcCropped,2*blur_amount+1);
+	threshold(image, image, thresholding_value, 255, 0);
+	bitwise_not(image, image);
+	erode(image, image, getStructuringElement(MORPH_RECT, Size(2 * erosion_value + 1, 2 * erosion_value + 1), Point(erosion_value, erosion_value)));
+	dilate(image, image, getStructuringElement(MORPH_RECT, Size(2 * dilation_value + 1, 2 * dilation_value + 1), Point(dilation_value, dilation_value)));
+	bitwise_not(image, image);
+	//GaussianBlur(srcCropped,srcCropped,Size(2*blur_amount+1,2*blur_amount+1),0,0);
+	medianBlur(image, image, 2 * blur_amount + 1);
+	// Clean Image
+	cleanImage(image, clean_brush_size);
+
 }
