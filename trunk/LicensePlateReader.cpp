@@ -531,7 +531,7 @@ void LicensePlateReader::prepareTesseract()
 {
 	tess.Init(NULL, "lpa", tesseract::OEM_DEFAULT);
 	tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
-	tess.SetVariable("tessedit_char_whitelist", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	tess.SetVariable("tessedit_char_whitelist", "0123456789ABCDEFGHJKLMNOPQRSTUVWXYZ");
 }
 
 int LicensePlateReader::readWithTesseract(Mat& srcPlate, int&confidence, char*& output)
