@@ -19,6 +19,12 @@
 #ifndef LICENSEPLATEREADER_H
 #define LICENSEPLATEREADER_H
 
+typedef struct PlatePack
+{
+	cv::Rect plate;
+	int confidence;
+} PlatePack;
+
 class LicensePlateReader{
 public:
 	LicensePlateReader();
@@ -43,6 +49,7 @@ public:
 	int ratio = 3;
 	int kernel_size = 3;
 	char* window_name = "Edge Map";
+	tesseract::TessBaseAPI tess;
 
 	/* Function prototypes */
 	void showDFTImage(cv::Mat&);
@@ -50,11 +57,16 @@ public:
 	void calculateFilterValues(cv::Mat&);
 	void drawSkewAngle(cv::Mat&);
 	int readWithTesseract(cv::Mat&, int&, char*&);
+	void prepareTesseract();
 	void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
 	/* Function prototypes */
 
 	/* Main Function*/
 	char* readLicensePlates(const char* picturePath, cv::Mat& markedRGB, cv::Mat& lpRGB);
+	void processImage(cv::Mat& image);
+
+	/*experimental*/
+
 };
 
 #endif

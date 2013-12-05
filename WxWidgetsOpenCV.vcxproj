@@ -39,8 +39,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(WXPATH)\include;$(WXPATH)\include\msvc;D:\cvblob\cvBlob;D:\Tesseract-OCR\Leptonica\include;D:\Tesseract-OCR\include;D:\opencv\build\include;D:\opencv\build\include\opencv;$(IncludePath)</IncludePath>
-    <LibraryPath>$(WXPATH)\lib;$(WXPATH)\lib\vc120_lib\;D:\Tesseract-OCR\Leptonica\lib;D:\opencv\build\x86\vc11\lib;D:\Tesseract-OCR\lib;D:\cvblob\genlib\Release;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(WXPATH)\include\msvc;$(WXPATH)\include;D:\cvblob\cvBlob;D:\Tesseract-OCR\Leptonica\include;D:\Tesseract-OCR\include;D:\opencv\build\include;D:\opencv\build\include\opencv;$(IncludePath)</IncludePath>
+    <LibraryPath>$(WXPATH)\lib\vc120_lib;D:\Tesseract-OCR\Leptonica\lib;D:\opencv\build\x86\vc11\lib;D:\Tesseract-OCR\lib;D:\cvblob\genlib\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
