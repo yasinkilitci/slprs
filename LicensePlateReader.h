@@ -28,9 +28,8 @@ typedef struct PlatePack
 class LicensePlateReader{
 public:
 	LicensePlateReader();
-	// ilker's variables
+	/* Global Variables*/
 	double thresholding_value;
-	int blur_value;
 	cv::RNG rng;
 	std::vector<cv::Rect> possiblePlates;
 	RatioCalculator *rc;
@@ -38,35 +37,31 @@ public:
 	int dilation_value;
 	int blur_amount;
 	int clean_brush_size;
-	/// Global variables
+	/* Global Variables*/
 
-	cv::Mat srcOriginal, srcModified, srcGray, srcCropped;
-	cv::Mat dst, detected_edges;
+	cv::Mat srcOriginal, srcGray, srcCropped;
+	cv::Mat dstGray, detected_edges;
 
-	int edgeThresh = 1;
-	int lowThreshold;
-	int const max_lowThreshold = 100;
-	int ratio = 3;
-	int kernel_size = 3;
-	char* window_name = "Edge Map";
+	int canny_threshold;
+	int canny_ratio;
+	int canny_kernel_size;
+
+	int morph_kernel_size;
+
 	tesseract::TessBaseAPI tess;
 
 	/* Function prototypes */
-	void showDFTImage(cv::Mat&);
 	void cleanImage(cv::Mat&, int);
 	void calculateFilterValues(cv::Mat&);
-	void drawSkewAngle(cv::Mat&);
-	int readWithTesseract(cv::Mat&, int&, char*&);
 	void prepareTesseract();
+	int readWithTesseract(cv::Mat&, int&, char*&);
+	int readWithTesseract(cv::Mat&, char*&);
 	void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
+	void processImage(cv::Mat& image);
 	/* Function prototypes */
 
 	/* Main Function*/
 	char* readLicensePlates(const char* picturePath, cv::Mat& markedRGB, cv::Mat& lpRGB);
-	void processImage(cv::Mat& image);
-
-	/*experimental*/
-
 };
 
 #endif
