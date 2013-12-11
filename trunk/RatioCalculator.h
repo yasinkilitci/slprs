@@ -5,7 +5,7 @@
 
 
 
-#define ERROR_AMOUNT 0.8f
+#define ERROR_AMOUNT 1.0f
 
 /* LICENCE PLATE RATIOS */
 
@@ -19,6 +19,11 @@
 // min originalwidth/platewidth value
 #define MIN_PLATE_HEIGHT_RATIO 25.0f
 
+
+// COLOR WEIGHT STATES
+#define STATE_COLOR_BLUE 1
+#define STATE_COLOR_RED 2
+#define STATE_COLOR_NONE 0
 
 ///////////////////////////////////////////
 ///////// LICENSE PLATE DIMENSIONS ////////
@@ -37,6 +42,7 @@ public:
 	cv::Rect getBiggestRect(std::vector<cv::Rect> sourceRectList, int &indexOfBiggest);
 	std::vector<cv::Rect> getPossiblePlates(std::vector<cv::Rect> &RectList, int imageHeight);
 	double calculateThresholdValue(cv::Mat&);
+	double calculateThresholdValue(cv::Mat& srcMat, int& weight);
 	void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
 	// VARIABLES
 private:
