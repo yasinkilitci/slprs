@@ -43,6 +43,7 @@ public:
 	std::vector<cv::Rect> getPossiblePlates(std::vector<cv::Rect> &RectList, int imageHeight);
 	double calculateThresholdValue(cv::Mat&);
 	double calculateThresholdValue(cv::Mat& srcMat, int& weight);
+	double calculateThresholdValue(cv::Mat& srcMat, double& colorbalance);
 	void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
 	// VARIABLES
 private:

@@ -5,7 +5,7 @@ using namespace cv;
 
 LicensePlateReader::LicensePlateReader()
 {
-	/* dandom seed*/
+	/* random seed*/
 	rng(12345);
 	/* creates new instance of Tesseract API and sets the variables */
 	prepareTesseract();
@@ -15,7 +15,6 @@ LicensePlateReader::LicensePlateReader()
 	canny_threshold = 99;
 	canny_ratio = 3;
 	canny_kernel_size = 3;
-
 	morph_kernel_size = 2;
 }
 
@@ -26,18 +25,28 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	
 	srcGray = srcOriginal.clone();
 
-	/* Calculate Thresholding Value */
+	/* Calculate Thresholding Value , Obtain the colorbalance value */
 	//GaussianBlur(srcOriginal,srcOriginal,Size(3,3),0,0);
 	medianBlur(srcOriginal, srcOriginal, 3);
-	thresholding_value = rc->calculateThresholdValue(srcOriginal);
+	thresholding_value = rc->calculateThresholdValue(srcOriginal,colorbalance);
 
 	/* Pre-Processing Stage */
 
 	cvtColor(srcGray, srcGray, CV_BGR2GRAY);
 	//GaussianBlur(srcModified,srcModified,Size(3,3),0,0);
-	//equalizeHist(srcModified,srcModified);
-	threshold(srcGray, srcGray, thresholding_value + 25, 255, 0);
+
+	if (colorbalance < 0.8 || colorbalance > 1.5)
+	{
+		equalizeHist(srcGray, srcGray);
+		imshow("Hist Eq", srcGray);
+		threshold(srcGray, srcGray, thresholding_value + 135, 255, 0);
+	}
+	else
+		threshold(srcGray, srcGray, thresholding_value + 25, 255, 0);
+	
 	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY,3,5);
+
+	imshow("srcGray", srcGray);
 
 	/// Create a matrix of the same type and size as src (for dst)
 	dstGray.create(srcOriginal.size(), srcOriginal.type());
@@ -98,21 +107,23 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		//circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
 	}
 
+
 	// all the bounding rects on the screen
-	//imshow("Bounding Rects", drawing);
+	imshow("Bounding Rects", drawing);
 
 	// Get possible plates
 	possiblePlates = rc->getPossiblePlates(boundRect, srcOriginal.rows);
+	drawing = srcOriginal.clone();
+	for (int i = 0; i<possiblePlates.size(); i++)
+		rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
+
 	vector<PlatePack> successfulPlates;
 	PlatePack t_successfulPlate;
 	int numberoftries = possiblePlates.size();
 	
 	while (numberoftries>0)
 	{
-		drawing = srcOriginal.clone();
-		for (int i = 0; i<possiblePlates.size(); i++)
-			rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
-
+		
 		Rect biggestRect;
 		int biggestRectIndex;
 		biggestRect = rc->getBiggestRect(possiblePlates, biggestRectIndex);
@@ -308,8 +319,9 @@ void LicensePlateReader::cleanImage(Mat& src, int border)
 		8);
 }
 
-void LicensePlateReader::calculateFilterValues(Mat& src)
+int LicensePlateReader::calculateFilterValues(Mat& src)
 {
+	//pixel count
 	long pc = src.cols * src.rows;
 	if (pc<10000)
 	{
@@ -317,7 +329,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 0;
 		blur_amount = 0;
 		clean_brush_size = 1;
-		//cout << "Category 1" << endl;
+		return PLATE_SIZE_XXXS;
 	}
 	else if (pc >= 10000 && pc<20000)
 	{
@@ -325,7 +337,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 1;
 		blur_amount = 1;
 		clean_brush_size = 5;
-		//cout << "Category 2" << endl;
+		return PLATE_SIZE_XXS;
 	}
 	else if (pc >= 20000 && pc<30000)
 	{
@@ -333,7 +345,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 1;
 		blur_amount = 1;
 		clean_brush_size = 20;
-		//cout << "Category 3" << endl;
+		return PLATE_SIZE_XS;
 	}
 	else if (pc >= 30000 && pc<40000)
 	{
@@ -341,7 +353,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 1;
 		blur_amount = 1;
 		clean_brush_size = 20;
-		//cout << "Category 4" << endl;
+		return PLATE_SIZE_S;
 	}
 	else if (pc >= 40000 && pc<50000)
 	{
@@ -349,7 +361,7 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 2;
 		blur_amount = 1;
 		clean_brush_size = 15;
-		//cout << "Category 5" << endl;
+		return PLATE_SIZE_M;
 	}
 	else if (pc >= 50000 && pc<100000)
 	{
@@ -357,39 +369,39 @@ void LicensePlateReader::calculateFilterValues(Mat& src)
 		dilation_value = 2;
 		blur_amount = 1;
 		clean_brush_size = 30;
-		//cout << "Category 6" << endl;
+		return PLATE_SIZE_L;
 	}
 	else if (pc >= 100000 && pc<150000)
 	{
 		erosion_value = 4;
 		dilation_value = 3;
 		blur_amount = 2;
-		clean_brush_size = 60;
-		//cout << "Category 7" << endl;
+		clean_brush_size = 35;
+		return PLATE_SIZE_XL;
 	}
 	else if (pc >= 150000 && pc<200000)
 	{
 		erosion_value = 4;
 		dilation_value = 4;
 		blur_amount = 2;
-		clean_brush_size = 80;
-		//cout << "Category 8" << endl;
+		clean_brush_size = 40;
+		return PLATE_SIZE_XXL;
 	}
 	else if (pc >= 200000 && pc<250000)
 	{
 		erosion_value = 5;
 		dilation_value = 4;
 		blur_amount = 2;
-		clean_brush_size = 100;
-		//cout << "Category 9" << endl;
+		clean_brush_size = 45;
+		return PLATE_SIZE_XXXL;
 	}
 	else
 	{
 		erosion_value = 5;
 		dilation_value = 5;
 		blur_amount = 2;
-		clean_brush_size = 120;
-		//cout << "Category 10" << endl;
+		clean_brush_size = 50;
+		return PLATE_SIZE_4XL;
 	}
 }
 
