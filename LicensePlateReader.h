@@ -19,6 +19,19 @@
 #ifndef LICENSEPLATEREADER_H
 #define LICENSEPLATEREADER_H
 
+/* License plate categories by pixelcount*/
+#define PLATE_SIZE_XXXS 1
+#define PLATE_SIZE_XXS 2
+#define PLATE_SIZE_XS 3
+#define PLATE_SIZE_S 4
+#define PLATE_SIZE_M 5
+#define PLATE_SIZE_L 6
+#define PLATE_SIZE_XL 7
+#define PLATE_SIZE_XXL 8
+#define PLATE_SIZE_XXXL 9
+#define PLATE_SIZE_4XL 10
+#define PLATE_SIZE_5XL 11
+
 typedef struct PlatePack
 {
 	cv::Rect plate;
@@ -30,6 +43,7 @@ public:
 	LicensePlateReader();
 	/* Global Variables*/
 	double thresholding_value;
+	double colorbalance;
 	cv::RNG rng;
 	std::vector<cv::Rect> possiblePlates;
 	RatioCalculator *rc;
@@ -52,7 +66,7 @@ public:
 
 	/* Function prototypes */
 	void cleanImage(cv::Mat&, int);
-	void calculateFilterValues(cv::Mat&);
+	int calculateFilterValues(cv::Mat&);
 	void prepareTesseract();
 	int readWithTesseract(cv::Mat&, int&, char*&);
 	int readWithTesseract(cv::Mat&, char*&);

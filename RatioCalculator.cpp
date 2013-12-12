@@ -91,7 +91,7 @@ double RatioCalculator::calculateThresholdValue(Mat &srcMat)
 	return average;
 }
 
-double RatioCalculator::calculateThresholdValue(cv::Mat& srcMat, int& weight)
+double RatioCalculator::calculateThresholdValue(Mat& srcMat, int& weight)
 {
 	int totalBlue = 0, totalGreen = 0, totalRed = 0;
 	double avgBlue = 0, avgGreen = 0, avgRed = 0, average = 0;
@@ -114,6 +114,30 @@ double RatioCalculator::calculateThresholdValue(cv::Mat& srcMat, int& weight)
 	weight = (avgBlue >= (avgGreen + avgRed)*0.8) ? (STATE_COLOR_BLUE) :
 		(avgRed >= (avgGreen + avgBlue)*0.8) ? STATE_COLOR_RED : STATE_COLOR_NONE;
 
+
+	return average;
+}
+
+double RatioCalculator::calculateThresholdValue(Mat& srcMat, double& colorbalance)
+{
+	int totalBlue = 0, totalGreen = 0, totalRed = 0;
+	double avgBlue = 0, avgGreen = 0, avgRed = 0, average = 0;
+	int pixelCount = srcMat.cols * srcMat.rows;
+
+
+	for (int row = 0; row < srcMat.rows; ++row)
+	for (int col = 0; col<srcMat.cols; ++col)
+	{
+		totalBlue += (int)srcMat.at<Vec3b>(row, col)[0];
+		totalGreen += (int)srcMat.at<Vec3b>(row, col)[1];
+		totalRed += (int)srcMat.at<Vec3b>(row, col)[2];
+	}
+
+	avgBlue = totalBlue / pixelCount;
+	avgGreen = totalGreen / pixelCount;
+	avgRed = totalRed / pixelCount;
+	average = (avgBlue + avgGreen + avgRed) / 3;
+	colorbalance = (avgRed / avgBlue) / (avgRed / avgGreen) / (avgBlue / avgGreen);
 
 	return average;
 }
