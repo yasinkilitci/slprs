@@ -25,6 +25,8 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	
 	srcGray = srcOriginal.clone();
 
+	//imshow("original", srcOriginal);
+
 	/* Calculate Thresholding Value , Obtain the colorbalance value */
 	//GaussianBlur(srcOriginal,srcOriginal,Size(3,3),0,0);
 	medianBlur(srcOriginal, srcOriginal, 3);
@@ -33,20 +35,23 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	/* Pre-Processing Stage */
 
 	cvtColor(srcGray, srcGray, CV_BGR2GRAY);
+
+
+	//imshow("orgGray", srcGray);
 	//GaussianBlur(srcModified,srcModified,Size(3,3),0,0);
 
-	if (colorbalance < 0.8 || colorbalance > 1.5)
+	/*if (colorbalance < 0.8 || colorbalance > 1.5)
 	{
 		equalizeHist(srcGray, srcGray);
 		imshow("Hist Eq", srcGray);
 		threshold(srcGray, srcGray, thresholding_value + 135, 255, 0);
 	}
-	else
+	else*/
 		threshold(srcGray, srcGray, thresholding_value + 25, 255, 0);
 	
 	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY,3,5);
 
-	imshow("srcGray", srcGray);
+	//imshow("srcGray", srcGray);
 
 	/// Create a matrix of the same type and size as src (for dst)
 	dstGray.create(srcOriginal.size(), srcOriginal.type());
@@ -60,7 +65,7 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	/// Using Canny's output as a mask, we display our result
 	dstGray = Scalar::all(0);
 	srcOriginal.copyTo(dstGray, detected_edges);
-	//imshow( "canny image", dst );
+	imshow( "canny image", dstGray );
 
 	/* Instead of Showing image, we continue from here and detect edges again */
 	vector<vector<Point> > contours;
@@ -72,14 +77,18 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	threshold(dstGray, dstGray, 1, 255, THRESH_BINARY);
 	
 	// dilate edges for filling gaps
-	//imshow("Before Dilation", threshold_output);
+	//imshow("Before Erode", dstGray);
 	Mat mtemp;
 
 	morphologyEx(dstGray, mtemp, MORPH_ERODE, getStructuringElement(MORPH_RECT, Size(2 * morph_kernel_size + 1, 2 * morph_kernel_size + 1), Point(1, 1)));
+	//imshow("After Erode", mtemp);
 	morphologyEx(mtemp, mtemp, MORPH_CLOSE, getStructuringElement(MORPH_RECT, Size(2 * 5 + 1, 2 * 5 + 1), Point(1, 1)));
+	//imshow("After Close", mtemp);
 	bitwise_not(mtemp, mtemp);
 	bitwise_and(dstGray, mtemp, mtemp);
 
+	//imshow("Before Contour", dstGray);
+	Mat drawing = dstGray.clone();
 	findContours(dstGray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	
 
@@ -98,7 +107,8 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 
 	/// Draw polygonal contour + bonding rects + circles
 	//Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
-	Mat drawing = srcOriginal.clone();
+	//Mat drawing = dstGray.clone();
+	cvtColor(drawing, drawing, CV_GRAY2BGR);
 	
 	for( int i = 0; i< contours.size(); i++ )
 	{
@@ -116,6 +126,8 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	drawing = srcOriginal.clone();
 	for (int i = 0; i<possiblePlates.size(); i++)
 		rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
+
+	imshow("Plates", drawing);
 
 	vector<PlatePack> successfulPlates;
 	PlatePack t_successfulPlate;
@@ -190,7 +202,6 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		/* SHOW THE MARKED PICTURE */
 		/////////////////////////////
 
-		//namedWindow("Contours", CV_WINDOW_AUTOSIZE);
 		//imshow("Contours", drawing);
 		Mat markedBGR = drawing.clone();
 		markedRGB = drawing.clone();
