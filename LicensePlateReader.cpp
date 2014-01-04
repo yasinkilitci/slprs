@@ -19,7 +19,7 @@ LicensePlateReader::LicensePlateReader()
 
 	showBoundingRects = false;
 	showMarkedPicture = false;
-	showCroppedPicture = false;
+	useEqualizeHistogram = false;
 	showChSeg = false;
 	showCannyResult = false;
 	showPlateContours = false;
@@ -48,13 +48,14 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	//imshow("orgGray", srcGray);
 	//GaussianBlur(srcModified,srcModified,Size(3,3),0,0);
 
-	/*if (colorbalance < 0.8 || colorbalance > 1.5)
+	if (useEqualizeHistogram)
 	{
+		imshow("Histogram Eþitleme (Öncesi)", srcGray);
 		equalizeHist(srcGray, srcGray);
-		imshow("Hist Eq", srcGray);
+		imshow("Histogram Eþitleme (Sonrasý)", srcGray);
 		threshold(srcGray, srcGray, thresholding_value + 135, 255, 0);
 	}
-	else*/
+	else
 		threshold(srcGray, srcGray, thresholding_value + 25, 255, 0);
 
 	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY,3,5);
@@ -226,8 +227,7 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		//////////////////////////////
 		/* SET THE CROPPED PICTURE */
 		/////////////////////////////
-		if (showCroppedPicture)
-		imshow("Kesilmis Resim", srcCropped);
+		//imshow("Kesilmis Resim", srcCropped);
 		Mat lpBGR = srcCropped.clone();
 		cvtColor(srcCropped, lpBGR, CV_GRAY2BGR);
 		lpRGB = lpBGR.clone();
@@ -496,7 +496,7 @@ void LicensePlateReader::setOptions(unsigned int options)
 {
 	showBoundingRects = ((options & SHOW_BOUNDING_RECTS) != 0) ? true : false;
 	showMarkedPicture = ((options & SHOW_MARKED_PICTURE) != 0) ? true : false;
-	showCroppedPicture = ((options & SHOW_CROPPED_PLATE) != 0) ? true : false;
+	useEqualizeHistogram = ((options & USE_EQUALIZE_HISTOGRAM) != 0) ? true : false;
 	showChSeg = ((options & SHOW_CHARACTER_SEG) != 0) ?  true : false;
 	showCannyResult = ((options & SHOW_CANNY_RESULT) != 0)? true:false;
 	showPlateContours = ((options & SHOW_PLATE_CONTOURS) != 0) ? true : false;
