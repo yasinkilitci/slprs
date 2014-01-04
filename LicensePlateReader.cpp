@@ -16,10 +16,18 @@ LicensePlateReader::LicensePlateReader()
 	canny_ratio = 3;
 	canny_kernel_size = 3;
 	morph_kernel_size = 2;
+
+	showBoundingRects = false;
+	showMarkedPicture = false;
+	showCroppedPicture = false;
+	showChSeg = false;
+	showCannyResult = false;
+	showPlateContours = false;
 }
 
 char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& markedRGB, Mat& lpRGB)
 {
+	destroyAllWindows();
 	// Load the picture
 	srcOriginal = imread(picturePath);
 	
@@ -30,7 +38,7 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	/* Calculate Thresholding Value , Obtain the colorbalance value */
 	//GaussianBlur(srcOriginal,srcOriginal,Size(3,3),0,0);
 	medianBlur(srcOriginal, srcOriginal, 3);
-	thresholding_value = rc->calculateThresholdValue(srcOriginal,colorbalance);
+	thresholding_value = calculateThresholdValue(srcOriginal,colorbalance);
 
 	/* Pre-Processing Stage */
 
@@ -48,10 +56,9 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	}
 	else*/
 		threshold(srcGray, srcGray, thresholding_value + 25, 255, 0);
-	
-	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY,3,5);
 
-	//imshow("srcGray", srcGray);
+	//adaptiveThreshold(srcModified,srcModified,255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY,3,5);
+	//imshow("EqHist-Threshold", srcGray);
 
 	/// Create a matrix of the same type and size as src (for dst)
 	dstGray.create(srcOriginal.size(), srcOriginal.type());
@@ -65,7 +72,9 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	/// Using Canny's output as a mask, we display our result
 	dstGray = Scalar::all(0);
 	srcOriginal.copyTo(dstGray, detected_edges);
-	imshow( "canny image", dstGray );
+
+	if (showCannyResult)
+		imshow( "Canny Image", dstGray );
 
 	/* Instead of Showing image, we continue from here and detect edges again */
 	vector<vector<Point> > contours;
@@ -117,9 +126,10 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		//circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
 	}
 
-
 	// all the bounding rects on the screen
-	imshow("Bounding Rects", drawing);
+	if (showBoundingRects)
+		imshow("Bounding Rects", drawing);
+		
 
 	// Get possible plates
 	possiblePlates = rc->getPossiblePlates(boundRect, srcOriginal.rows);
@@ -127,7 +137,8 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 	for (int i = 0; i<possiblePlates.size(); i++)
 		rectangle(drawing, possiblePlates[i].tl(), possiblePlates[i].br(), Scalar(0, 0, 255), 2, 8, 0);
 
-	imshow("Plates", drawing);
+	if (showMarkedPicture)
+		imshow("Plates", drawing);
 
 	vector<PlatePack> successfulPlates;
 	PlatePack t_successfulPlate;
@@ -215,7 +226,8 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		//////////////////////////////
 		/* SET THE CROPPED PICTURE */
 		/////////////////////////////
-		//imshow("Kesilmis Resim", srcCropped);
+		if (showCroppedPicture)
+		imshow("Kesilmis Resim", srcCropped);
 		Mat lpBGR = srcCropped.clone();
 		cvtColor(srcCropped, lpBGR, CV_GRAY2BGR);
 		lpRGB = lpBGR.clone();
@@ -252,7 +264,8 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 			rectangle(plate_drawing, plate_boundRect[i].tl(), plate_boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);
 		}
 
-		imshow("Plate Contours", plate_drawing);
+		if (showPlateContours)
+			imshow("Plate Contours", plate_drawing);
 
 
 		//////////////////////////////////////
@@ -277,7 +290,7 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 
 				/* set srcCropped from original Picture again (we calculate blue values over it*/
 				// Crop plate from the original pic, then crop the character from the plate
-				rc->calculateThresholdValue((srcOriginal(bestRect))(plate_boundRect[i]), color_state);
+				calculateThresholdValue((srcOriginal(bestRect))(plate_boundRect[i]), color_state);
 
 				if (!color_state)
 					m_singlechar.copyTo(white(plate_boundRect[i]));
@@ -285,7 +298,8 @@ char* LicensePlateReader::readLicensePlates(const char* picturePath, Mat& marked
 		}
 
 		/* show the assembled picture*/
-		imshow("white_concat", white);
+		if (showChSeg)
+			imshow("white_concat", white);
 
 		char* buffer;
 		readWithTesseract(white, buffer);
@@ -462,7 +476,7 @@ void LicensePlateReader::processImage(Mat& image)
 	/* Initialize filter values */
 	calculateFilterValues(image);
 
-	thresholding_value = rc->calculateThresholdValue(image);
+	thresholding_value = calculateThresholdValue(image);
 	cvtColor(image, image, CV_BGR2GRAY);
 	//equalizeHist(srcCropped,srcCropped);
 	//medianBlur(srcCropped,srcCropped,2*blur_amount+1);
@@ -476,4 +490,14 @@ void LicensePlateReader::processImage(Mat& image)
 	// Clean Image
 	cleanImage(image, clean_brush_size);
 
+}
+
+void LicensePlateReader::setOptions(unsigned int options)
+{
+	showBoundingRects = ((options & SHOW_BOUNDING_RECTS) != 0) ? true : false;
+	showMarkedPicture = ((options & SHOW_MARKED_PICTURE) != 0) ? true : false;
+	showCroppedPicture = ((options & SHOW_CROPPED_PLATE) != 0) ? true : false;
+	showChSeg = ((options & SHOW_CHARACTER_SEG) != 0) ?  true : false;
+	showCannyResult = ((options & SHOW_CANNY_RESULT) != 0)? true:false;
+	showPlateContours = ((options & SHOW_PLATE_CONTOURS) != 0) ? true : false;
 }

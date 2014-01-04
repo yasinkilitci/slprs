@@ -68,7 +68,7 @@ vector<Rect> RatioCalculator::getPossiblePlates(vector<Rect> &RectList, int imag
 	return possiblePlates;
 }
 
-double RatioCalculator::calculateThresholdValue(Mat &srcMat)
+double calculateThresholdValue(Mat &srcMat)
 {
 	int totalBlue = 0, totalGreen = 0, totalRed = 0;
 	double avgBlue = 0, avgGreen = 0, avgRed = 0, average = 0;
@@ -91,7 +91,7 @@ double RatioCalculator::calculateThresholdValue(Mat &srcMat)
 	return average;
 }
 
-double RatioCalculator::calculateThresholdValue(Mat& srcMat, int& weight)
+double calculateThresholdValue(Mat& srcMat, int& weight)
 {
 	int totalBlue = 0, totalGreen = 0, totalRed = 0;
 	double avgBlue = 0, avgGreen = 0, avgRed = 0, average = 0;
@@ -111,14 +111,14 @@ double RatioCalculator::calculateThresholdValue(Mat& srcMat, int& weight)
 
 	average = (avgBlue + avgGreen + avgRed) / 3;
 
-	weight = (avgBlue >= (avgGreen + avgRed)*0.8) ? (STATE_COLOR_BLUE) :
-		(avgRed >= (avgGreen + avgBlue)*0.8) ? STATE_COLOR_RED : STATE_COLOR_NONE;
+	weight = (avgBlue >= (avgGreen + avgRed) * 0.8) ? (STATE_COLOR_BLUE) :
+		(avgRed >= (avgGreen + avgBlue) * 0.8) ? STATE_COLOR_RED : STATE_COLOR_NONE;
 
 
 	return average;
 }
 
-double RatioCalculator::calculateThresholdValue(Mat& srcMat, double& colorbalance)
+double calculateThresholdValue(Mat& srcMat, double& colorbalance)
 {
 	int totalBlue = 0, totalGreen = 0, totalRed = 0;
 	double avgBlue = 0, avgGreen = 0, avgRed = 0, average = 0;
@@ -142,7 +142,7 @@ double RatioCalculator::calculateThresholdValue(Mat& srcMat, double& colorbalanc
 	return average;
 }
 
-void RatioCalculator::convertBGR2RGB(Mat& src, Mat& dst)
+void convertBGR2RGB(Mat& src, Mat& dst)
 {
 	for (int row = 0; row < src.rows; ++row)
 		for (int col = 0; col<src.cols; ++col)

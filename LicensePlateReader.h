@@ -32,6 +32,16 @@
 #define PLATE_SIZE_4XL 10
 #define PLATE_SIZE_5XL 11
 
+
+// OPTIONS
+
+#define SHOW_BOUNDING_RECTS 0x0000000a
+#define SHOW_CHARACTER_SEG	0x000000a0
+#define SHOW_CROPPED_PLATE	0x00000a00
+#define SHOW_MARKED_PICTURE 0x0000a000
+#define SHOW_CANNY_RESULT	0x000a0000
+#define SHOW_PLATE_CONTOURS 0x00a00000
+
 typedef struct PlatePack
 {
 	cv::Rect plate;
@@ -59,10 +69,19 @@ public:
 	int canny_threshold;
 	int canny_ratio;
 	int canny_kernel_size;
-
 	int morph_kernel_size;
 
 	tesseract::TessBaseAPI tess;
+
+	/* OPTIONS */
+	bool showBoundingRects;
+	bool showMarkedPicture;
+	bool showCroppedPicture;
+	bool showChSeg;
+	bool showCannyResult;
+	bool showPlateContours;
+	/* OPTIONS */
+
 
 	/* Function prototypes */
 	void cleanImage(cv::Mat&, int);
@@ -72,6 +91,7 @@ public:
 	int readWithTesseract(cv::Mat&, char*&);
 	void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
 	void processImage(cv::Mat& image);
+	void setOptions(unsigned int options);
 	/* Function prototypes */
 
 	/* Main Function*/
