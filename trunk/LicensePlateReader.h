@@ -37,7 +37,7 @@
 
 #define SHOW_BOUNDING_RECTS 0x0000000a
 #define SHOW_CHARACTER_SEG	0x000000a0
-#define SHOW_CROPPED_PLATE	0x00000a00
+#define USE_EQUALIZE_HISTOGRAM	0x00000a00
 #define SHOW_MARKED_PICTURE 0x0000a000
 #define SHOW_CANNY_RESULT	0x000a0000
 #define SHOW_PLATE_CONTOURS 0x00a00000
@@ -76,7 +76,7 @@ public:
 	/* OPTIONS */
 	bool showBoundingRects;
 	bool showMarkedPicture;
-	bool showCroppedPicture;
+	bool useEqualizeHistogram;
 	bool showChSeg;
 	bool showCannyResult;
 	bool showPlateContours;

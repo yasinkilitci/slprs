@@ -94,7 +94,7 @@ public:
 
 	wxCheckBox *cbShowBoundingRects;
 	wxCheckBox *cbShowMarkedPicture;
-	wxCheckBox *cbShowCroppedPicture;
+	wxCheckBox *cbUseEqualizeHistogram;
 	wxCheckBox *cbShowChSeg;
 	wxCheckBox *cbShowCanny;
 	wxCheckBox *cbShowPlateContours;
@@ -255,7 +255,7 @@ MyFrame::MyFrame(const wxString& title)
 	cbShowBoundingRects = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Bounding Rect Göster"), wxPoint(10, 60), SIZE_BUTTON_XLARGE, 0);
 	cbShowPlateContours = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Karakter Segmentasyonu Göster (Ýlk)"), wxPoint(10, 90), SIZE_BUTTON_XLARGE, 0);
 	cbShowChSeg = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Karakter Segmentasyonu Göster (Son)"), wxPoint(10, 120), SIZE_BUTTON_XLARGE, 0);
-	cbShowCroppedPicture = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Kesilmiþ Resmi Göster"), wxPoint(10, 150), SIZE_BUTTON_XLARGE, 0);
+	cbUseEqualizeHistogram = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Histogram Eþitle"), wxPoint(10, 150), SIZE_BUTTON_XLARGE, 0);
 	cbShowMarkedPicture = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Ýþaretlenmiþ Resmi Göster"), wxPoint(10, 180), SIZE_BUTTON_XLARGE, 0);
 	
 	
@@ -386,10 +386,10 @@ void MyFrame::checkAndSetOptions()
 	else
 		options &= ~SHOW_CHARACTER_SEG;
 
-	if (cbShowCroppedPicture->IsChecked())
-		options |= SHOW_CROPPED_PLATE;
+	if (cbUseEqualizeHistogram->IsChecked())
+		options |= USE_EQUALIZE_HISTOGRAM;
 	else
-		options &= ~SHOW_CROPPED_PLATE;
+		options &= ~USE_EQUALIZE_HISTOGRAM;
 
 	if (cbShowMarkedPicture->IsChecked())
 		options |= SHOW_MARKED_PICTURE;
