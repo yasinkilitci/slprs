@@ -41,10 +41,10 @@ public:
 	float getRatio(cv::Rect sourceRect);
 	cv::Rect getBiggestRect(std::vector<cv::Rect> sourceRectList, int &indexOfBiggest);
 	std::vector<cv::Rect> getPossiblePlates(std::vector<cv::Rect> &RectList, int imageHeight);
-	double calculateThresholdValue(cv::Mat&);
-	double calculateThresholdValue(cv::Mat& srcMat, int& weight);
-	double calculateThresholdValue(cv::Mat& srcMat, double& colorbalance);
-	void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
+	friend double calculateThresholdValue(cv::Mat&);
+	friend double calculateThresholdValue(cv::Mat& srcMat, int& weight);
+	friend double calculateThresholdValue(cv::Mat& srcMat, double& colorbalance);
+	friend void convertBGR2RGB(cv::Mat& src, cv::Mat& dst);
 	// VARIABLES
 private:
 	std::vector<cv::Rect> possiblePlates;

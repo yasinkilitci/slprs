@@ -72,12 +72,16 @@ public:
 	void OnPaint(wxCommandEvent& WXUNUSED(event));
 	void OnBtnSelectDirClick(wxCommandEvent& event);
 	void OnPlateBoxSelect(wxCommandEvent& WXUNUSED(event));
+	void OnCheckBoxSelect(wxCommandEvent& WXUNUSED(event));
+	void OnBtnClearClick(wxCommandEvent& WXUNUSED(event));
+	void checkAndSetOptions();
 
 	////////////////////////
 	///// FORM ELEMENTS ////
 	////////////////////////
 	// Buttons
 	wxButton* btnOpenDir;
+	wxButton* btnClearLists;
 	// ListBoxes
 	wxListBox *lbPictures;
 	wxListBox *lbPlates;
@@ -85,11 +89,21 @@ public:
 	wxStaticBitmap *btmMarked;
 	wxStaticBitmap *btmLP;
 	// Panels
-	wxPanel *topPanel;
-	wxPanel *bottomPanel;
+	wxPanel *pnlTop;
+	wxPanel *pnlBottom;
+
+	wxCheckBox *cbShowBoundingRects;
+	wxCheckBox *cbShowMarkedPicture;
+	wxCheckBox *cbShowCroppedPicture;
+	wxCheckBox *cbShowChSeg;
+	wxCheckBox *cbShowCanny;
+	wxCheckBox *cbShowPlateContours;
+
 
 	// OPENCV FUNCS
+	LicensePlateReader* lpr;
 private:
+	unsigned int options;
 	// any class wishing to process wxWidgets events must use this macro
 	DECLARE_EVENT_TABLE()
 };
@@ -108,8 +122,9 @@ enum
 	// this standard value as otherwise it won't be handled properly under Mac
 	// (where it is special and put into the "Apple" menu)
 	Minimal_About = wxID_ABOUT,
-	PlateBox_Select = wxID_SELECTALL
-
+	PlateBox_Select = wxID_SELECTALL,
+	Checkbox_Select = wxID_ANY,
+	BtnClear_Click = wxID_CLEAR
 };
 
 // ----------------------------------------------------------------------------
@@ -123,8 +138,11 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 EVT_MENU(Minimal_Quit, MyFrame::OnQuit)
 EVT_MENU(Minimal_About, MyFrame::OnAbout)
 EVT_MENU(Dialog_SelectDir, MyFrame::OnBtnSelectDirClick)
+EVT_BUTTON(BtnClear_Click, MyFrame::OnBtnClearClick)
 EVT_BUTTON(Dialog_SelectDir, MyFrame::OnBtnSelectDirClick)
 EVT_LISTBOX(PlateBox_Select, MyFrame::OnPlateBoxSelect)
+EVT_CHECKBOX(Checkbox_Select,MyFrame::OnCheckBoxSelect)
+
 END_EVENT_TABLE()
 
 // Create a new application object: this macro will allow wxWidgets to create
@@ -198,6 +216,7 @@ MyFrame::MyFrame(const wxString& title)
 	menuBar->Append(plateMenu, "&Plaka Ýþlemleri");
 	menuBar->Append(helpMenu, "&Yardým");
 	
+	options = 0;
 
 	// ... and attach this menu bar to the frame
 	SetMenuBar(menuBar);
@@ -207,29 +226,51 @@ MyFrame::MyFrame(const wxString& title)
 	///////// FORM ELEMENTS SHOULD BE SET HERE //////
 	/////////////////////////////////////////////////
 
-	btnOpenDir = new wxButton(this, wxID_APPLY, wxT("Klasör Seç"), wxPoint(10, 265),SIZE_BUTTON_SMALL,0);
-	
+	btnOpenDir = new wxButton(this, wxID_APPLY, wxT("Klasör Seç"), wxPoint(10, 265), SIZE_BUTTON_SMALL, 0);
+	btnClearLists = new wxButton(this, wxID_CLEAR, wxT("Temizle"), wxPoint(120, 265), SIZE_BUTTON_SMALL, 0);
+
 	/* READ PIC */
 	Mat srcBGR = imread("D:/opencv/resim/plaka/plaka01.jpg");
 	Mat srcRGB = srcBGR.clone();
-	RatioCalculator* rc = new RatioCalculator();
-	rc->convertBGR2RGB(srcBGR, srcRGB);
+	convertBGR2RGB(srcBGR, srcRGB);
 	wxImage* resim1 = new wxImage(srcRGB.cols, srcRGB.rows, srcRGB.data, true);
 	wxImage resim = resim1->Scale(320, 240, wxIMAGE_QUALITY_HIGH);
-	topPanel = new wxPanel(this, wxID_ANY, wxPoint(10, 10), wxSize(770, 250));
-	btmMarked = new wxStaticBitmap(topPanel, wxID_ANY, wxBitmap(resim), wxPoint(5, 5), wxSize(320, 240));
-	/* LISTBOX */
-	lbPictures = new wxListBox(topPanel, wxID_SELECTALL, wxPoint(330, 5), wxSize(250, 240));
-	lbPlates = new wxListBox(topPanel, wxID_ANY, wxPoint(585, 50), wxSize(170, 195));
+	
+	// PANELS
+	pnlTop = new wxPanel(this, wxID_ANY, wxPoint(10, 10), wxSize(770, 250));
+	pnlBottom = new wxPanel(this, wxID_ANY, wxPoint(10, 300), wxSize(770, 215));
+	// PANELS
 
-	delete rc, resim1, &resim;
+
+
+	btmMarked = new wxStaticBitmap(pnlTop, wxID_ANY, wxBitmap(resim), wxPoint(5, 5), wxSize(320, 240));
+	/* LISTBOX */
+	lbPictures = new wxListBox(pnlTop, wxID_SELECTALL, wxPoint(330, 5), wxSize(250, 240));
+	lbPlates = new wxListBox(pnlTop, wxID_ANY, wxPoint(585, 50), wxSize(170, 195));
+
+	
+	/* Checboxes for Options*/
+	wxStaticText* lblOptions = new wxStaticText(pnlBottom, wxID_ANY, wxT("SEÇENEKLER"), wxPoint(10, 10), SIZE_BUTTON_XLARGE, 0);
+	cbShowCanny = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Canny Göster"), wxPoint(10, 30), SIZE_BUTTON_XLARGE, 0);
+	cbShowBoundingRects = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Bounding Rect Göster"), wxPoint(10, 60), SIZE_BUTTON_XLARGE, 0);
+	cbShowPlateContours = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Karakter Segmentasyonu Göster (Ýlk)"), wxPoint(10, 90), SIZE_BUTTON_XLARGE, 0);
+	cbShowChSeg = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Karakter Segmentasyonu Göster (Son)"), wxPoint(10, 120), SIZE_BUTTON_XLARGE, 0);
+	cbShowCroppedPicture = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Kesilmiþ Resmi Göster"), wxPoint(10, 150), SIZE_BUTTON_XLARGE, 0);
+	cbShowMarkedPicture = new wxCheckBox(pnlBottom, Checkbox_Select, wxT("Ýþaretlenmiþ Resmi Göster"), wxPoint(10, 180), SIZE_BUTTON_XLARGE, 0);
+	
+	
+	lpr = new LicensePlateReader();
+
+	checkAndSetOptions();
+
+	delete resim1, &resim;
 
 	/* ILKER */
 
 #if wxUSE_STATUSBAR
 	// create a status bar just for fun (by default with 1 pane only)
 	CreateStatusBar(2);
-	SetStatusText("Welcome to wxWidgets!");
+	SetStatusText("Welcome to SLPRS!");
 #endif // wxUSE_STATUSBAR
 }
 
@@ -253,8 +294,10 @@ void MyFrame::OnPlateBoxSelect(wxCommandEvent& WXUNUSED(event))
 	{
 		wxString fullpath(lbPictures->GetString(lbPictures->GetSelection()));
 		Mat markedRGB, lpRGB;
-		LicensePlateReader* lpr = new LicensePlateReader();
+		checkAndSetOptions();
+		lpr->setOptions(options);
 		wxString licensePlate(lpr->readLicensePlates(fullpath, markedRGB, lpRGB));
+		
 		if (strcmp(licensePlate, ""))
 		{
 			wxImage* imgMarked_Raw = new wxImage(markedRGB.cols, markedRGB.rows, markedRGB.data, true);
@@ -263,8 +306,8 @@ void MyFrame::OnPlateBoxSelect(wxCommandEvent& WXUNUSED(event))
 			wxImage imgLP_Scaled = imgLP_Raw->Scale(DIM_LP_TR_WIDTH*3, DIM_LP_TR_HEIGHT*3, wxIMAGE_QUALITY_HIGH);
 			if (btmMarked!=NULL)
 			delete btmMarked;
-			btmMarked = new wxStaticBitmap(topPanel, wxID_ANY, wxBitmap(imgMarked_Scaled), wxPoint(5, 5), wxSize(320, 240));
-			btmLP = new wxStaticBitmap(topPanel, wxID_ANY, wxBitmap(imgLP_Scaled), wxPoint(585, 10), wxSize(DIM_LP_TR_WIDTH * 3, DIM_LP_TR_HEIGHT * 3));
+			btmMarked = new wxStaticBitmap(pnlTop, wxID_ANY, wxBitmap(imgMarked_Scaled), wxPoint(5, 5), wxSize(320, 240));
+			btmLP = new wxStaticBitmap(pnlTop, wxID_ANY, wxBitmap(imgLP_Scaled), wxPoint(585, 10), wxSize(DIM_LP_TR_WIDTH * 3, DIM_LP_TR_HEIGHT * 3));
 			btmMarked->Refresh();
 			btmLP->Refresh();
 			if (strlen(licensePlate)>6)
@@ -318,4 +361,51 @@ void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 		"About wxWidgets minimal sample",
 		wxOK | wxICON_INFORMATION,
 		this);
+}
+
+void MyFrame::OnCheckBoxSelect(wxCommandEvent& WXUNUSED(event))
+{
+	checkAndSetOptions();
+}
+
+void MyFrame::checkAndSetOptions()
+{
+	options = 0;
+	if (cbShowCanny->IsChecked())
+		options |= SHOW_CANNY_RESULT;
+	else
+		options &= ~SHOW_CANNY_RESULT;
+
+	if (cbShowBoundingRects->IsChecked())
+		options |= SHOW_BOUNDING_RECTS;
+	else
+		options &= ~SHOW_BOUNDING_RECTS;
+
+	if (cbShowChSeg->IsChecked())
+		options |= SHOW_CHARACTER_SEG;
+	else
+		options &= ~SHOW_CHARACTER_SEG;
+
+	if (cbShowCroppedPicture->IsChecked())
+		options |= SHOW_CROPPED_PLATE;
+	else
+		options &= ~SHOW_CROPPED_PLATE;
+
+	if (cbShowMarkedPicture->IsChecked())
+		options |= SHOW_MARKED_PICTURE;
+	else
+		options &= ~SHOW_MARKED_PICTURE;
+
+	if (cbShowPlateContours->IsChecked())
+		options |= SHOW_PLATE_CONTOURS;
+	else
+		options &= ~SHOW_PLATE_CONTOURS;
+
+
+}
+
+void MyFrame::OnBtnClearClick(wxCommandEvent& WXUNUSED(event))
+{
+	lbPictures->Clear();
+	lbPlates->Clear();
 }
